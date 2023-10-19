@@ -1,14 +1,37 @@
 import ts from 'typescript';
+import fs from 'fs';
+
+function loadStandardLib(path: string) {
+	const standardTypeDefs = fs.readFileSync(`node_modules/typescript/lib/${path}`, 'utf8');
+	return ts.createSourceFile('lib.d.ts', standardTypeDefs.toString(), ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
+}
 
 function typecheck(code: string) {
 	console.log(`Type checking the following code:\n${code}\n`);
+
 	const file = ts.createSourceFile('index.ts', code, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
+	const libs = [
+		'lib.decorators.d.ts',
+		'lib.decorators.legacy.d.ts',
+		'lib.d.ts',
+		'lib.es5.d.ts',
+		'lib.webworker.importscripts.d.ts',
+		'lib.scripthost.d.ts',
+		'lib.dom.d.ts',
+		'lib.esnext.d.ts',
+	];
 
 	// This is needed
 	const compilerHost: ts.CompilerHost = {
 		fileExists: (fileName) => fileName === file.fileName,
-		getSourceFile: (fileName) => (fileName === file.fileName ? file : undefined),
-		getDefaultLibFileName: () => '',
+		getSourceFile: (fileName) => {
+			for (const lib of libs) {
+				if (fileName === lib) return loadStandardLib(lib);
+			}
+			// read the dts file from node modules
+			if (fileName === file.fileName) return file;
+		},
+		getDefaultLibFileName: () => 'lib.d.ts',
 		writeFile: () => {},
 		getCurrentDirectory: () => '/',
 		getCanonicalFileName: (f) => f.toLowerCase(),
@@ -21,6 +44,7 @@ function typecheck(code: string) {
 		[file.fileName],
 		{
 			allowJs: true,
+			noEmit: true,
 			noEmitOnError: true,
 			noImplicitAny: true,
 			target: ts.ScriptTarget.ESNext,
@@ -29,11 +53,10 @@ function typecheck(code: string) {
 		compilerHost,
 	);
 
-
 	const emitResult = program.emit();
 	const allDiagnostics = ts.getPreEmitDiagnostics(program);
 
-	console.log( { emitResult, allDiagnostics })
+	// console.log({ emitResult, allDiagnostics });
 
 	allDiagnostics.forEach((diagnostic) => {
 		if (diagnostic.file) {
