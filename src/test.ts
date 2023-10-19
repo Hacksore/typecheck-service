@@ -9,12 +9,12 @@ function typecheck(code: string) {
 	console.log(`Type checking the following code:\n${code}\n`);
 
 	const libs = ts.createSourceFile(
-		'libs.d.ts',
+		'lib.d.ts',
 		libsDTS,
 		ts.ScriptTarget.ESNext,
 	);
 
-	const file = ts.createSourceFile('index.ts', code, ts.ScriptTarget.ESNext);
+	const file = ts.createSourceFile('index.ts', code, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
 
 	// This is needed
 	const compilerHost: ts.CompilerHost = {
