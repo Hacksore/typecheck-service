@@ -1,19 +1,7 @@
 import ts from 'typescript';
-import path from 'path';
-
-import { readFileSync } from 'fs';
-
-const libsDTS = readFileSync(path.resolve('./node_modules/typescript/lib/lib.d.ts'), 'utf8').toString();
 
 function typecheck(code: string) {
 	console.log(`Type checking the following code:\n${code}\n`);
-
-	const libs = ts.createSourceFile(
-		'lib.d.ts',
-		libsDTS,
-		ts.ScriptTarget.ESNext,
-	);
-
 	const file = ts.createSourceFile('index.ts', code, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
 
 	// This is needed
