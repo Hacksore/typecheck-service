@@ -8,30 +8,32 @@ function typecheck(code: string) {
 	const compilerHost: ts.CompilerHost = {
 		fileExists: (fileName) => fileName === file.fileName,
 		getSourceFile: (fileName) => (fileName === file.fileName ? file : undefined),
-		getDefaultLibFileName: () => 'lib.d.ts',
+		getDefaultLibFileName: () => '',
 		writeFile: () => {},
 		getCurrentDirectory: () => '/',
-		getDirectories: () => [],
 		getCanonicalFileName: (f) => f.toLowerCase(),
 		getNewLine: () => '\n',
 		useCaseSensitiveFileNames: () => false,
 		readFile: (fileName) => (fileName === file.fileName ? file.text : undefined),
-		resolveModuleNames: () => [],
 	};
 
 	const program = ts.createProgram(
 		[file.fileName],
 		{
-			strict: true,
-			module: ts.ModuleKind.ESNext,
-			moduleResolution: ts.ModuleResolutionKind.NodeNext,
+			allowJs: true,
+			noEmitOnError: true,
+			noImplicitAny: true,
 			target: ts.ScriptTarget.ESNext,
+			module: ts.ModuleKind.ESNext,
 		},
 		compilerHost,
 	);
 
+
 	const emitResult = program.emit();
 	const allDiagnostics = ts.getPreEmitDiagnostics(program);
+
+	console.log( { emitResult, allDiagnostics })
 
 	allDiagnostics.forEach((diagnostic) => {
 		if (diagnostic.file) {
