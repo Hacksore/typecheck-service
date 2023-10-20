@@ -47,6 +47,7 @@ async function typecheck({ code, testCase }: { code: string; testCase: string })
 		standardLibCodeDefs[lib] = await loadStandardLib(lib);
 	}
 
+	// for now we just concat the code and testCase but it might make more sense to split this into two files?
 	const file = ts.createSourceFile('index.ts', `${code}\n${testCase}`, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
 
 	// This is needed
