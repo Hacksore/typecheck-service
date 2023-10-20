@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs';
-import packageJson from '../package.json';
 // TODO: make this read node_modules/typescript/lib/*.d.ts and upload them to:
 // R2 Bucket: typescript/<version>/libs/<libName>
+ 
+import path from 'node:path';
+
+import packageJson from '../package.json';
 
 // NOTE: we should share this with the worker code
 const standardLibs = [
@@ -18,7 +21,8 @@ const standardLibs = [
 const typescriptVersion = packageJson.dependencies.typescript;
 
 for (const lib of standardLibs) {
-  const libCode = readFileSync(`node_modules/typescript/lib/${lib}`, 'utf8');
+  const libPath = path.resolve(`../node_modules/typescript/lib/${lib}`);
+  const libCode = readFileSync(libPath, 'utf8');
 
   // upload to the r2 Bucket
   uploadToR2({
@@ -29,5 +33,5 @@ for (const lib of standardLibs) {
 }
 
 function uploadToR2(arg0: { typescriptVersion: string; lib: string; libCode: string }) {
-  throw new Error('Function not implemented.');
+  // TODO: impl
 }

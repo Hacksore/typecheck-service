@@ -13,13 +13,10 @@ function readFromDb(libName: string): string {
 
 Problem we can't read from the filesystem so we have to think of another way to get all the built ins so that typechecking will work 
 
-- use a database/kv store and store all the native libs extracted from typescript package
-- when the function boots up it will fetch them and get the string values
+- use R2 to store the libs extracted from typescript package
+- when the function boots up it will fetch them and get the string values for each one
 
-Issues:
- we need a way to seed the k/v store / database so that we have the libs ready
-
-we might even be able to use R2 so then we don't have the problem above
+We need to see how fast reading all the d.ts files is, if it's slow we will have to do k/v to speed it up
 */
 
 // NOTE: im not sure which ones we actually need
