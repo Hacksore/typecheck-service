@@ -22,6 +22,7 @@ Issues:
 we might even be able to use R2 so then we don't have the problem above
 */
 
+// NOTE: im not sure which ones we actually need
 const standardLibs = [
 	'lib.decorators.d.ts',
 	'lib.decorators.legacy.d.ts',
