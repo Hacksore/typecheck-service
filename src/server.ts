@@ -5,14 +5,14 @@ const app = new Hono();
 
 function readFromDb(libName: string): string {
 	console.log(`Fetching the lib for ${libName}`);
-	// throw new Error('Function not implemented.');
 	return 'test';
 }
 
 /* IDEA:
 
-Problem we can't read from the filesystem so we have to think of another way to get all the built ins so that typechecking will work 
+Problem we can't read from the filesystem in a worker to get all the standardLibs
 
+Solution:
 - use R2 to store the libs extracted from typescript package
 - when the function boots up it will fetch them and get the string values for each one
 
@@ -81,11 +81,13 @@ function typecheck({ code, testCase }: { code: string; testCase: string }) {
 		if (diagnostic.file) {
 			const { line, character } = ts.getLineAndCharacterOfPosition(diagnostic.file, diagnostic.start!);
 			const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
-			console.log(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
-			errors.push(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
+			const errorMessage =`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`
+			console.log(errorMessage);
+			errors.push(errorMessage);
 		} else {
-			console.log(ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
-			errors.push(ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
+			const errorMessage = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
+			console.log(errorMessage);
+			errors.push(errorMessage);
 		}
 	});
 
