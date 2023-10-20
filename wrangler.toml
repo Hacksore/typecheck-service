@@ -1,0 +1,3 @@
+name = "typecheck-service"
+main = "src/server.ts"
+compatibility_date = "2023-10-16"
