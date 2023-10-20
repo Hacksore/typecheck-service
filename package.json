@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "tsx watch src/server.ts",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "start": "wrangler dev",
     "seed": "tsx scripts/seed.ts",
     "format": "prettier",
     "lint": "eslint . --ext ts --report-unused-disable-directives --max-warnings 0"
