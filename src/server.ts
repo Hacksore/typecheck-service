@@ -3,7 +3,8 @@ import ts from 'typescript';
 
 const app = new Hono();
 
-function readFromDb(libName: string): string {
+// TODO: impl
+async function readFromR2(libName: string): Promise<string> {
 	console.log(`Fetching the lib for ${libName}`);
 	return 'test';
 }
@@ -31,14 +32,20 @@ const standardLibs = [
 	'lib.esnext.d.ts',
 ];
 
-function loadStandardLib(libName: string) {
+async function loadStandardLib(libName: string) {
 	// fetch the native lib from the db
-	const nativeLib = readFromDb(libName);
-	return ts.createSourceFile(libName, nativeLib, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
+	const nativeLib = await readFromR2(libName);
+	return nativeLib;
 }
 
-function typecheck({ code, testCase }: { code: string; testCase: string }) {
+const standardLibCodeDefs: Record<string, string> = {};
+async function typecheck({ code, testCase }: { code: string; testCase: string }) {
 	console.log(`Type checking the following code:\n${code}\n`);
+
+	// read all the standard libs from r2
+	for (const lib of standardLibs) {
+		standardLibCodeDefs[lib] = await loadStandardLib(lib);
+	}
 
 	const file = ts.createSourceFile('index.ts', `${code}\n${testCase}`, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
 
@@ -46,8 +53,10 @@ function typecheck({ code, testCase }: { code: string; testCase: string }) {
 	const compilerHost: ts.CompilerHost = {
 		fileExists: (fileName) => fileName === file.fileName,
 		getSourceFile: (fileName) => {
-			for (const lib of standardLibs) {
-				if (fileName === lib) return loadStandardLib(lib);
+			for (const libName of standardLibs) {
+				if (libName === fileName) {
+					return ts.createSourceFile(libName, standardLibCodeDefs[libName], ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
+				}
 			}
 			// read the dts file from node modules
 			if (fileName === file.fileName) return file;
@@ -81,11 +90,11 @@ function typecheck({ code, testCase }: { code: string; testCase: string }) {
 		if (diagnostic.file) {
 			const { line, character } = ts.getLineAndCharacterOfPosition(diagnostic.file, diagnostic.start!);
 			const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
-			const errorMessage =`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`
+			const errorMessage = `${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`;
 			console.log(errorMessage);
 			errors.push(errorMessage);
 		} else {
-			const errorMessage = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
+			const errorMessage = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
 			console.log(errorMessage);
 			errors.push(errorMessage);
 		}
