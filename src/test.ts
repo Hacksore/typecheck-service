@@ -56,8 +56,6 @@ function typecheck(code: string) {
 	const emitResult = program.emit();
 	const allDiagnostics = ts.getPreEmitDiagnostics(program);
 
-	// console.log({ emitResult, allDiagnostics });
-
 	allDiagnostics.forEach((diagnostic) => {
 		if (diagnostic.file) {
 			const { line, character } = ts.getLineAndCharacterOfPosition(diagnostic.file, diagnostic.start!);
