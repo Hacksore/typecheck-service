@@ -96,10 +96,11 @@ function typecheck({ code, testCase }: { code: string; testCase: string }) {
 	};
 }
 
+// TODO: add zod
 app.post('/api/test', async (c) => {
-	const body = await c.req.parseBody();
+	const { code, testCase } = await c.req.parseBody();
 
-	const result = typecheck(body.toString());
+	const result = typecheck({ code, testCase });
 	try {
 		return c.json({
 			result,
