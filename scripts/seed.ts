@@ -1,5 +1,7 @@
 import 'dotenv/config';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import path from 'node:path';
+import packageJson from '../package.json';
 
 const { ACCOUNT_ID = '', ACCESS_KEY_ID = '', SECRET_ACCESS_KEY = '' } = process.env;
 
@@ -13,12 +15,6 @@ const client = new S3Client({
 });
 
 import { readFileSync } from 'node:fs';
-// TODO: make this read node_modules/typescript/lib/*.d.ts and upload them to:
-// R2 Bucket: typescript/<version>/libs/<libName>
-
-import path from 'node:path';
-import packageJson from '../package.json';
-
 // NOTE: we should share this with the worker code
 const standardLibs = [
   'lib.decorators.d.ts',
@@ -50,13 +46,13 @@ async function uploadToR2(lib: { typescriptVersion: string; name: string; code: 
 
   const command = new PutObjectCommand({
     Bucket: 'typedefs',
-    Key: lib.name,
+    Key: `typescript/v${typescriptVersion}/${lib.name}`,
     Body: lib.code,
   });
 
   try {
     const response = await client.send(command);
-    console.log(response);
+    console.log(`auccessfully uploaded ${lib.name} to r2`, response.$metadata.cfId);
   } catch (err) {
     console.error(err);
   }
