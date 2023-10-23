@@ -12,8 +12,12 @@
     "lint": "eslint . --ext ts --report-unused-disable-directives --max-warnings 0"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.433.0",
     "@cloudflare/workers-types": "^4.20230419.0",
     "@types/node": "^20.4.2",
+    "dotenv": "^16.3.1",
+    "tsx": "^3.14.0",
+    "typescript": "5.2.2",
     "wrangler": "^3.0.0"
   },
   "dependencies": {
@@ -21,7 +25,6 @@
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.45.0",
-    "typescript": "5.2.2",
     "hono": "^3.8.1",
     "type-testing": "^0.1.2"
   }

@@ -1,9 +1,22 @@
+import 'dotenv/config';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+
+const { ACCOUNT_ID = '', ACCESS_KEY_ID = '', SECRET_ACCESS_KEY = '' } = process.env;
+
+const client = new S3Client({
+  region: 'auto',
+  endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: ACCESS_KEY_ID,
+    secretAccessKey: SECRET_ACCESS_KEY,
+  },
+});
+
 import { readFileSync } from 'node:fs';
 // TODO: make this read node_modules/typescript/lib/*.d.ts and upload them to:
 // R2 Bucket: typescript/<version>/libs/<libName>
- 
-import path from 'node:path';
 
+import path from 'node:path';
 import packageJson from '../package.json';
 
 // NOTE: we should share this with the worker code
@@ -20,18 +33,31 @@ const standardLibs = [
 
 const typescriptVersion = packageJson.dependencies.typescript;
 
-for (const lib of standardLibs) {
-  const libPath = path.resolve(`../node_modules/typescript/lib/${lib}`);
-  const libCode = readFileSync(libPath, 'utf8');
+for (const name of standardLibs) {
+  const libPath = path.resolve(`./node_modules/typescript/lib/${name}`);
+  const code = readFileSync(libPath, 'utf8');
 
   // upload to the r2 Bucket
   uploadToR2({
     typescriptVersion,
-    lib,
-    libCode,
+    name,
+    code,
   });
 }
 
-function uploadToR2(arg0: { typescriptVersion: string; lib: string; libCode: string }) {
-  // TODO: impl
+async function uploadToR2(lib: { typescriptVersion: string; name: string; code: string }) {
+  console.log(`uploading to r2, ${lib.name}`);
+
+  const command = new PutObjectCommand({
+    Bucket: 'typedefs',
+    Key: lib.name,
+    Body: lib.code,
+  });
+
+  try {
+    const response = await client.send(command);
+    console.log(response);
+  } catch (err) {
+    console.error(err);
+  }
 }
