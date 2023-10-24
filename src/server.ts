@@ -1,4 +1,3 @@
-import { Context } from 'hono';
 import { Hono } from 'hono/quick';
 import {
 	CompilerHost,
