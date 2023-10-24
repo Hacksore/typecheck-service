@@ -1,12 +1,27 @@
+import { Context } from 'hono';
 import { Hono } from 'hono/quick';
 import ts from 'typescript';
+import { z } from 'zod';
 
-const app = new Hono();
+type Bindings = {
+	TYPEDEFS: R2Bucket;
+};
 
-// TODO: impl
-async function readFromR2(libName: string): Promise<string> {
+const app = new Hono<{ Bindings: Bindings }>();
+
+const TYPESCRIPT_VERSION = '5.2.2';
+
+async function readFromR2(ctx: Context, libName: string): Promise<string> {
 	console.log(`Fetching the lib for ${libName}`);
-	return 'test';
+
+	try {
+		const object = await ctx.env.TYPEDEFS.get(`typescript/${TYPESCRIPT_VERSION}/${libName}`);
+		console.log(object);
+		return 'test';
+	} catch (err) {
+		console.error(err);
+		return 'error';
+	}
 }
 
 /* IDEA:
@@ -32,19 +47,19 @@ const standardLibs = [
 	'lib.esnext.d.ts',
 ];
 
-async function loadStandardLib(libName: string) {
+async function loadStandardLib(ctx: Context, libName: string) {
 	// fetch the native lib from the db
-	const nativeLib = await readFromR2(libName);
+	const nativeLib = await readFromR2(ctx, libName);
 	return nativeLib;
 }
 
 const standardLibCodeDefs: Record<string, string> = {};
-async function typecheck({ code, testCase }: { code: string; testCase: string }) {
+async function typecheck({ ctx, code, testCase }: { ctx: Context; code: string; testCase: string }) {
 	console.log(`Type checking the following code:\n${code}\n`);
 
 	// read all the standard libs from r2
 	for (const lib of standardLibs) {
-		standardLibCodeDefs[lib] = await loadStandardLib(lib);
+		standardLibCodeDefs[lib] = await loadStandardLib(ctx, lib);
 	}
 
 	// for now we just concat the code and testCase but it might make more sense to split this into two files?
@@ -63,7 +78,7 @@ async function typecheck({ code, testCase }: { code: string; testCase: string })
 			if (fileName === file.fileName) return file;
 		},
 		getDefaultLibFileName: () => 'lib.d.ts',
-		writeFile: () => { },
+		writeFile: () => {},
 		getCurrentDirectory: () => '/',
 		getCanonicalFileName: (f) => f.toLowerCase(),
 		getNewLine: () => '\n',
@@ -106,13 +121,29 @@ async function typecheck({ code, testCase }: { code: string; testCase: string })
 	};
 }
 
-// TODO: add zod
-app.post('/api/test', async (c) => {
-	const { code, testCase } = await c.req.parseBody();
+const codeTestSchema = z.object({
+	code: z.string(),
+	testCase: z.string(),
+});
 
-	const result = typecheck({ code, testCase });
+type CodeTest = z.infer<typeof codeTestSchema>;
+
+app.post('/api/test', async (ctx) => {
+	const body = await ctx.req.json<CodeTest>();
+
+	// let it rip
 	try {
-		return c.json({
+		codeTestSchema.parse(body);
+	} catch (err) {
+		console.error('could not parse the schema');
+	}
+
+	const { code, testCase } = body;
+	console.log({ code, testCase });
+	const result = typecheck({ ctx, code, testCase });
+
+	try {
+		return ctx.json({
 			result,
 		});
 	} catch (e) {
