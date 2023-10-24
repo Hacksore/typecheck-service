@@ -17,21 +17,9 @@ type Bindings = {
 	TYPEDEFS: R2Bucket;
 };
 
-const app = new Hono<{ Bindings: Bindings }>();
+const app = new Hono < { Bindings: Bindings } > ();
 
 const TYPESCRIPT_VERSION = '5.2.2';
-
-// TODO: fix binding/types
-async function readFromR2(ctx: Context, libName: string): Promise<string | null> {
-	const objectPath = `typescript/v${TYPESCRIPT_VERSION}/${libName}`;
-	try {
-		const object = await ctx.env.TYPEDEFS.get(objectPath);
-		return object.body;
-	} catch (err) {
-		console.error(err);
-		return null;
-	}
-}
 
 /* IDEA:
 
@@ -57,7 +45,7 @@ const standardLibs = [
 ];
 
 const standardLibCodeDefs: Record<string, string> = {};
-async function typecheck({ code, testCase }: { code: string; testCase: string }) {
+function typecheck({ code, testCase }: { code: string; testCase: string }) {
 	console.log('in typecheck', Object.keys(standardLibCodeDefs));
 	// create all standard libs
 	for (const [libName, libCode] of Object.entries(standardLibCodeDefs)) {
@@ -86,7 +74,7 @@ async function typecheck({ code, testCase }: { code: string; testCase: string })
 			if (fileName === file.fileName) return file;
 		},
 		getDefaultLibFileName: () => 'lib.d.ts',
-		writeFile: () => {},
+		writeFile: () => { },
 		getCurrentDirectory: () => '/',
 		getCanonicalFileName: (f) => f.toLowerCase(),
 		getNewLine: () => '\n',
@@ -139,7 +127,7 @@ const codeTestSchema = z.object({
 type CodeTest = z.infer<typeof codeTestSchema>;
 
 app.post('/api/test', async (ctx) => {
-	const body = await ctx.req.json<CodeTest>();
+	const body = await ctx.req.json < CodeTest > ();
 
 	// let it rip
 	try {
@@ -151,11 +139,11 @@ app.post('/api/test', async (ctx) => {
 		});
 	}
 
-	// read all the standard libs from r2
+	console.log('start loop to read');
 	for (const lib of standardLibs) {
-		const libCode = await readFromR2(ctx, lib);
-		if (libCode !== null) {
-			standardLibCodeDefs[lib] = libCode;
+		const libObject = await ctx.env.TYPEDEFS.get(`typescript/v${TYPESCRIPT_VERSION}/lib.d.ts`);
+		if (libObject !== null) {
+			standardLibCodeDefs[lib] = await libObject.text();
 		}
 	}
 
@@ -164,6 +152,7 @@ app.post('/api/test', async (ctx) => {
 	try {
 		console.log('starting typecheck');
 		const errors = typecheck({ code, testCase });
+		console.log('done with typecheck');
 		return ctx.json({
 			errors,
 		});
