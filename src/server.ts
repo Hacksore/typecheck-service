@@ -1,26 +1,35 @@
 import { Context } from 'hono';
 import { Hono } from 'hono/quick';
-import ts from 'typescript/lib/typescript';
+import {
+	CompilerHost,
+	createProgram,
+	createSourceFile,
+	flattenDiagnosticMessageText,
+	getLineAndCharacterOfPosition,
+	getPreEmitDiagnostics,
+	ModuleKind,
+	ScriptKind,
+	ScriptTarget,
+} from 'typescript';
 import { z } from 'zod';
 
 type Bindings = {
 	TYPEDEFS: R2Bucket;
 };
 
-const app = new Hono<{ Bindings: Bindings }>();
+const app = new Hono < { Bindings: Bindings } > ();
 
 const TYPESCRIPT_VERSION = '5.2.2';
 
-async function readFromR2(ctx: Context, libName: string): Promise<string> {
+// TODO: fix binding/types
+async function readFromR2(ctx: Context, libName: string): Promise<string | null> {
 	const objectPath = `typescript/v${TYPESCRIPT_VERSION}/${libName}`;
-	console.log('Fetting from', objectPath);
 	try {
 		const object = await ctx.env.TYPEDEFS.get(objectPath);
-		console.log('r2', object);
-		return 'test';
+		return object.body;
 	} catch (err) {
 		console.error(err);
-		return 'error';
+		return null;
 	}
 }
 
@@ -49,23 +58,35 @@ const standardLibs = [
 
 const standardLibCodeDefs: Record<string, string> = {};
 async function typecheck({ code, testCase }: { code: string; testCase: string }) {
+	console.log("in typecheck", Object.keys(standardLibCodeDefs))
+	// create all standard libs
+	for (const [libName, libCode] of Object.entries(standardLibCodeDefs)) {
+		console.log('found lib', libName, 'loading code from memory', libCode.substring(0, 10));
+		createSourceFile(libName, libCode, ScriptTarget.ESNext, true, ScriptKind.TS);
+	}
+
+	console.log('starting typescheck for', { code, testCase });
 	// for now we just concat the code and testCase but it might make more sense to split this into two files?
-	const file = ts.createSourceFile('index.ts', `${code}\n${testCase}`, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
+	const file = createSourceFile('index.ts', `${code}\n${testCase}`, ScriptTarget.ESNext, true, ScriptKind.TS);
 
 	// This is needed
-	const compilerHost: ts.CompilerHost = {
+	console.log('creating compiler host');
+	const compilerHost: CompilerHost = {
 		fileExists: (fileName) => fileName === file.fileName,
 		getSourceFile: (fileName) => {
-			for (const libName of standardLibs) {
-				if (libName === fileName) {
-					return ts.createSourceFile(libName, standardLibCodeDefs[libName], ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
-				}
-			}
+			// for (const libName of standardLibs) {
+			// 	console.log(`checking if ${libName} === ${fileName}`);
+			// 	if (libName === fileName) {
+			// 		const libCode = standardLibCodeDefs[libName];
+			// 		console.log('found lib', libName, 'loading code from memory', libCode.substring(0, 10));
+			// 		return createSourceFile(libName, libCode, ScriptTarget.ESNext, true, ScriptKind.TS);
+			// 	}
+			// }
 			// read the dts file from node modules
 			if (fileName === file.fileName) return file;
 		},
 		getDefaultLibFileName: () => 'lib.d.ts',
-		writeFile: () => {},
+		writeFile: () => { },
 		getCurrentDirectory: () => '/',
 		getCanonicalFileName: (f) => f.toLowerCase(),
 		getNewLine: () => '\n',
@@ -73,31 +94,33 @@ async function typecheck({ code, testCase }: { code: string; testCase: string })
 		readFile: (fileName) => (fileName === file.fileName ? file.text : undefined),
 	};
 
-	const program = ts.createProgram(
+	console.log('creating program');
+	const program = createProgram(
 		[file.fileName],
 		{
 			allowJs: true,
 			noEmit: true,
 			noEmitOnError: true,
 			noImplicitAny: true,
-			target: ts.ScriptTarget.ESNext,
-			module: ts.ModuleKind.ESNext,
+			target: ScriptTarget.ESNext,
+			module: ModuleKind.ESNext,
 		},
 		compilerHost,
 	);
 
-	const allDiagnostics = ts.getPreEmitDiagnostics(program);
+	const allDiagnostics = getPreEmitDiagnostics(program);
 	const errors: string[] = [];
 
+	console.log('checking for errors');
 	allDiagnostics.forEach((diagnostic) => {
 		if (diagnostic.file) {
-			const { line, character } = ts.getLineAndCharacterOfPosition(diagnostic.file, diagnostic.start!);
-			const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
+			const { line, character } = getLineAndCharacterOfPosition(diagnostic.file, diagnostic.start!);
+			const message = flattenDiagnosticMessageText(diagnostic.messageText, '\n');
 			const errorMessage = `${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`;
 			console.log(errorMessage);
 			errors.push(errorMessage);
 		} else {
-			const errorMessage = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
+			const errorMessage = flattenDiagnosticMessageText(diagnostic.messageText, '\n');
 			console.log(errorMessage);
 			errors.push(errorMessage);
 		}
@@ -116,11 +139,7 @@ const codeTestSchema = z.object({
 type CodeTest = z.infer<typeof codeTestSchema>;
 
 app.post('/api/test', async (ctx) => {
-	const body = await ctx.req.json<CodeTest>();
-
-	const obj = await ctx.env.TYPEDEFS.get('typescript/v5.2.2/lib.d.ts', {});
-
-	return ctx.json({ test: 1, obj });
+	const body = await ctx.req.json < CodeTest > ();
 
 	// let it rip
 	try {
@@ -134,19 +153,24 @@ app.post('/api/test', async (ctx) => {
 
 	// read all the standard libs from r2
 	for (const lib of standardLibs) {
-		standardLibCodeDefs[lib] = await readFromR2(ctx, lib);
+		const libCode = await readFromR2(ctx, lib);
+		if (libCode !== null) {
+			standardLibCodeDefs[lib] = libCode;
+		}
 	}
 
 	const { code, testCase } = body;
-	console.log({ code, testCase });
-	const result = typecheck({ code, testCase });
 
 	try {
+		console.log('starting typecheck');
+		const errors = typecheck({ code, testCase });
 		return ctx.json({
-			result,
+			errors,
 		});
-	} catch (e) {
-		console.log(e);
+	} catch (err: any) {
+		return ctx.json({
+			errror: err.message,
+		});
 	}
 });
 
