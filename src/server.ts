@@ -118,9 +118,7 @@ type CodeTest = z.infer<typeof codeTestSchema>;
 app.post('/api/test', async (ctx) => {
 	const body = await ctx.req.json<CodeTest>();
 
-	const obj = await ctx.env.TYPEDEFS.get('typescript/v5.2.2/lib.d.ts', {
-		
-	});
+	const obj = await ctx.env.TYPEDEFS.get('typescript/v5.2.2/lib.d.ts', {});
 
 	return ctx.json({ test: 1, obj });
 
