@@ -1,6 +1,6 @@
 import { Context } from 'hono';
 import { Hono } from 'hono/quick';
-import ts from 'typescript';
+import ts from 'typescript/lib/typescript';
 import { z } from 'zod';
 
 type Bindings = {
