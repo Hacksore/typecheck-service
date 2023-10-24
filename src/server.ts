@@ -48,14 +48,15 @@ function typecheck({ code, testCase }: { code: string; testCase: string }) {
 	console.log('in typecheck', Object.keys(standardLibCodeDefs));
 
 	console.log('starting typescheck for', { code, testCase });
-	const userFile = createSourceFile('user.ts', code, ScriptTarget.ESNext, true, ScriptKind.TS);
 	const testCaseFile = createSourceFile('test.ts', testCase, ScriptTarget.ESNext, true, ScriptKind.TS);
+	const userFile = createSourceFile('user.ts', code, ScriptTarget.ESNext, true, ScriptKind.TS);
 
 	// This is needed
 	console.log('creating compiler host');
 	const compilerHost: CompilerHost = {
-		fileExists: (fileName) => fileName === userFile.fileName,
+		fileExists: (fileName) => [testCaseFile.fileName, userFile.fileName].includes(fileName),
 		getSourceFile: (fileName) => {
+			console.log('getting source file', { fileName })
 			for (const libName of standardLibs) {
 				if (fileName === libName) {
 					const libCode = standardLibCodeDefs[libName];
@@ -65,7 +66,7 @@ function typecheck({ code, testCase }: { code: string; testCase: string }) {
 
 			// load our file that has our input code
 			if (fileName === userFile.fileName) return userFile;
-			if (fileName === testCaseFile.fileName) return userFile;
+			if (fileName === testCaseFile.fileName) return testCaseFile;
 		},
 		getDefaultLibFileName: () => 'lib.d.ts',
 		writeFile: () => { },
@@ -78,7 +79,7 @@ function typecheck({ code, testCase }: { code: string; testCase: string }) {
 
 	console.log('creating program');
 	const program = createProgram(
-		[userFile.fileName],
+		[testCaseFile.fileName, userFile.fileName],
 		{
 			allowJs: true,
 			noEmit: true,
