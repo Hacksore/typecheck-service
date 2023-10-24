@@ -56,7 +56,7 @@ function typecheck({ code, testCase }: { code: string; testCase: string }) {
 	const compilerHost: CompilerHost = {
 		fileExists: (fileName) => [testCaseFile.fileName, userFile.fileName].includes(fileName),
 		getSourceFile: (fileName) => {
-			console.log('getting source file', { fileName })
+			console.log('getting source file', { fileName });
 			for (const libName of standardLibs) {
 				if (fileName === libName) {
 					const libCode = standardLibCodeDefs[libName];
@@ -135,6 +135,7 @@ app.post('/api/test', async (ctx) => {
 	}
 
 	console.log('start loop to read');
+	const requestStartTime = Date.now();
 	for (const lib of standardLibs) {
 		const libObject = await ctx.env.TYPEDEFS.get(`typescript/v${TYPESCRIPT_VERSION}/${lib}`);
 		if (libObject !== null) {
@@ -142,6 +143,8 @@ app.post('/api/test', async (ctx) => {
 		}
 	}
 
+	const executionTime = Date.now() - requestStartTime;
+	console.log('time to get r2 libs', executionTime, 'ms');
 	console.log(`loaded ${Object.keys(standardLibCodeDefs).length} libs`);
 
 	const { code, testCase } = body;
