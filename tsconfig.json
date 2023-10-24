@@ -16,6 +16,7 @@
 		"isolatedModules": true,
 		"noEmit": true,
 		"jsx": "react-jsx",
+		"types": ["@cloudflare/workers-types"],
 		/* Linting */
 		"strict": true,
 		"noUnusedLocals": true,

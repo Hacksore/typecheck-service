@@ -48,21 +48,22 @@ function typecheck({ code, testCase }: { code: string; testCase: string }) {
 	console.log('in typecheck', Object.keys(standardLibCodeDefs));
 
 	console.log('starting typescheck for', { code, testCase });
-	// for now we just concat the code and testCase but it might make more sense to split this into two files?
-	const file = createSourceFile('index.ts', `${code}\n${testCase}`, ScriptTarget.ESNext, true, ScriptKind.TS);
+	const userFile = createSourceFile('user.ts', code, ScriptTarget.ESNext, true, ScriptKind.TS);
+	const testCaseFile = createSourceFile('test.ts', testCase, ScriptTarget.ESNext, true, ScriptKind.TS);
 
 	// This is needed
 	console.log('creating compiler host');
 	const compilerHost: CompilerHost = {
-		fileExists: (fileName) => fileName === file.fileName,
+		fileExists: (fileName) => fileName === userFile.fileName,
 		getSourceFile: (fileName) => {
-			for (const [_libName, libCode] of Object.entries(standardLibCodeDefs)) {
-				console.log(`creating a source file for ${_libName}, ${libCode.length}`);
-				return createSourceFile(_libName, libCode, ScriptTarget.ESNext, true, ScriptKind.TS);
+			for (const [libName, libCode] of Object.entries(standardLibCodeDefs)) {
+				console.log("creating lib file", libName);
+				return createSourceFile(libName, libCode, ScriptTarget.ESNext, true, ScriptKind.TS);
 			}
 
 			// load our file that has our input code
-			if (fileName === file.fileName) return file;
+			if (fileName === userFile.fileName) return userFile;
+			if (fileName === testCaseFile.fileName) return userFile;
 		},
 		getDefaultLibFileName: () => 'lib.d.ts',
 		writeFile: () => { },
@@ -70,12 +71,12 @@ function typecheck({ code, testCase }: { code: string; testCase: string }) {
 		getCanonicalFileName: (f) => f.toLowerCase(),
 		getNewLine: () => '\n',
 		useCaseSensitiveFileNames: () => false,
-		readFile: (fileName) => (fileName === file.fileName ? file.text : undefined),
+		readFile: (fileName) => (fileName === userFile.fileName ? userFile.text : undefined),
 	};
 
 	console.log('creating program');
 	const program = createProgram(
-		[file.fileName],
+		[userFile.fileName],
 		{
 			allowJs: true,
 			noEmit: true,
@@ -137,6 +138,8 @@ app.post('/api/test', async (ctx) => {
 			standardLibCodeDefs[lib] = await libObject.text();
 		}
 	}
+
+	console.log(`loaded ${Object.keys(standardLibCodeDefs).length} libs`);
 
 	const { code, testCase } = body;
 
