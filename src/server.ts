@@ -17,7 +17,7 @@ type Bindings = {
 	TYPEDEFS: R2Bucket;
 };
 
-const app = new Hono < { Bindings: Bindings } > ();
+const app = new Hono<{ Bindings: Bindings }>();
 
 const TYPESCRIPT_VERSION = '5.2.2';
 
@@ -58,7 +58,7 @@ const standardLibs = [
 
 const standardLibCodeDefs: Record<string, string> = {};
 async function typecheck({ code, testCase }: { code: string; testCase: string }) {
-	console.log("in typecheck", Object.keys(standardLibCodeDefs))
+	console.log('in typecheck', Object.keys(standardLibCodeDefs));
 	// create all standard libs
 	for (const [libName, libCode] of Object.entries(standardLibCodeDefs)) {
 		console.log('found lib', libName, 'loading code from memory', libCode.substring(0, 10));
@@ -86,7 +86,7 @@ async function typecheck({ code, testCase }: { code: string; testCase: string })
 			if (fileName === file.fileName) return file;
 		},
 		getDefaultLibFileName: () => 'lib.d.ts',
-		writeFile: () => { },
+		writeFile: () => {},
 		getCurrentDirectory: () => '/',
 		getCanonicalFileName: (f) => f.toLowerCase(),
 		getNewLine: () => '\n',
@@ -139,7 +139,7 @@ const codeTestSchema = z.object({
 type CodeTest = z.infer<typeof codeTestSchema>;
 
 app.post('/api/test', async (ctx) => {
-	const body = await ctx.req.json < CodeTest > ();
+	const body = await ctx.req.json<CodeTest>();
 
 	// let it rip
 	try {
