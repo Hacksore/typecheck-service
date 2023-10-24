@@ -12,11 +12,11 @@ const app = new Hono<{ Bindings: Bindings }>();
 const TYPESCRIPT_VERSION = '5.2.2';
 
 async function readFromR2(ctx: Context, libName: string): Promise<string> {
-	console.log(`Fetching the lib for ${libName}`);
-
+	const objectPath = `typescript/v${TYPESCRIPT_VERSION}/${libName}`;
+	console.log('Fetting from', objectPath);
 	try {
-		const object = await ctx.env.TYPEDEFS.get(`typescript/${TYPESCRIPT_VERSION}/${libName}`);
-		console.log(object);
+		const object = await ctx.env.TYPEDEFS.get(objectPath);
+		console.log('r2', object);
 		return 'test';
 	} catch (err) {
 		console.error(err);
@@ -47,21 +47,8 @@ const standardLibs = [
 	'lib.esnext.d.ts',
 ];
 
-async function loadStandardLib(ctx: Context, libName: string) {
-	// fetch the native lib from the db
-	const nativeLib = await readFromR2(ctx, libName);
-	return nativeLib;
-}
-
 const standardLibCodeDefs: Record<string, string> = {};
-async function typecheck({ ctx, code, testCase }: { ctx: Context; code: string; testCase: string }) {
-	console.log(`Type checking the following code:\n${code}\n`);
-
-	// read all the standard libs from r2
-	for (const lib of standardLibs) {
-		standardLibCodeDefs[lib] = await loadStandardLib(ctx, lib);
-	}
-
+async function typecheck({ code, testCase }: { code: string; testCase: string }) {
 	// for now we just concat the code and testCase but it might make more sense to split this into two files?
 	const file = ts.createSourceFile('index.ts', `${code}\n${testCase}`, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS);
 
@@ -131,16 +118,30 @@ type CodeTest = z.infer<typeof codeTestSchema>;
 app.post('/api/test', async (ctx) => {
 	const body = await ctx.req.json<CodeTest>();
 
+	const obj = await ctx.env.TYPEDEFS.get('typescript/v5.2.2/lib.d.ts', {
+		
+	});
+
+	return ctx.json({ test: 1, obj });
+
 	// let it rip
 	try {
 		codeTestSchema.parse(body);
 	} catch (err) {
 		console.error('could not parse the schema');
+		return ctx.json({
+			error: 'could not parse the schema',
+		});
+	}
+
+	// read all the standard libs from r2
+	for (const lib of standardLibs) {
+		standardLibCodeDefs[lib] = await readFromR2(ctx, lib);
 	}
 
 	const { code, testCase } = body;
 	console.log({ code, testCase });
-	const result = typecheck({ ctx, code, testCase });
+	const result = typecheck({ code, testCase });
 
 	try {
 		return ctx.json({
