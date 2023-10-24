@@ -46,11 +46,6 @@ const standardLibs = [
 const standardLibCodeDefs: Record<string, string> = {};
 function typecheck({ code, testCase }: { code: string; testCase: string }) {
 	console.log('in typecheck', Object.keys(standardLibCodeDefs));
-	// create all standard libs
-	for (const [libName, libCode] of Object.entries(standardLibCodeDefs)) {
-		console.log('found lib', libName, 'loading code from memory', libCode.substring(0, 10));
-		createSourceFile(libName, libCode, ScriptTarget.ESNext, true, ScriptKind.TS);
-	}
 
 	console.log('starting typescheck for', { code, testCase });
 	// for now we just concat the code and testCase but it might make more sense to split this into two files?
@@ -61,19 +56,16 @@ function typecheck({ code, testCase }: { code: string; testCase: string }) {
 	const compilerHost: CompilerHost = {
 		fileExists: (fileName) => fileName === file.fileName,
 		getSourceFile: (fileName) => {
-			// for (const libName of standardLibs) {
-			// 	console.log(`checking if ${libName} === ${fileName}`);
-			// 	if (libName === fileName) {
-			// 		const libCode = standardLibCodeDefs[libName];
-			// 		console.log('found lib', libName, 'loading code from memory', libCode.substring(0, 10));
-			// 		return createSourceFile(libName, libCode, ScriptTarget.ESNext, true, ScriptKind.TS);
-			// 	}
-			// }
-			// read the dts file from node modules
+			for (const [_libName, libCode] of Object.entries(standardLibCodeDefs)) {
+				console.log(`creating a source file for ${_libName}, ${libCode.length}`);
+				return createSourceFile(_libName, libCode, ScriptTarget.ESNext, true, ScriptKind.TS);
+			}
+
+			// load our file that has our input code
 			if (fileName === file.fileName) return file;
 		},
 		getDefaultLibFileName: () => 'lib.d.ts',
-		writeFile: () => {},
+		writeFile: () => { },
 		getCurrentDirectory: () => '/',
 		getCanonicalFileName: (f) => f.toLowerCase(),
 		getNewLine: () => '\n',
@@ -140,7 +132,7 @@ app.post('/api/test', async (ctx) => {
 
 	console.log('start loop to read');
 	for (const lib of standardLibs) {
-		const libObject = await ctx.env.TYPEDEFS.get(`typescript/v${TYPESCRIPT_VERSION}/lib.d.ts`);
+		const libObject = await ctx.env.TYPEDEFS.get(`typescript/v${TYPESCRIPT_VERSION}/${lib}`);
 		if (libObject !== null) {
 			standardLibCodeDefs[lib] = await libObject.text();
 		}
@@ -152,9 +144,7 @@ app.post('/api/test', async (ctx) => {
 		console.log('starting typecheck');
 		const errors = typecheck({ code, testCase });
 		console.log('done with typecheck');
-		return ctx.json({
-			errors,
-		});
+		return ctx.json(errors);
 	} catch (err: any) {
 		return ctx.json({
 			errror: err.message,
