@@ -6,5 +6,10 @@ account_id = ""
 workers_dev = true
 
 [[r2_buckets]]
-binding = "TYPEDEFS" # <~ valid JavaScript variable name
+binding = "TYPEDEFS"
 bucket_name = ""
+
+[[kv_namespaces]]
+binding = "TYPEDEFS_KV"
+id = ""
+

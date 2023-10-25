@@ -14,6 +14,7 @@ import { z } from 'zod';
 
 type Bindings = {
 	TYPEDEFS: R2Bucket;
+	TYPEDEFS_KV: KVNamespace;
 };
 
 const app = new Hono < { Bindings: Bindings } > ();
@@ -121,6 +122,25 @@ const codeTestSchema = z.object({
 
 type CodeTest = z.infer<typeof codeTestSchema>;
 
+app.post('/api/seed', async (ctx) => {
+	try {
+		for (const lib of standardLibs) {
+			const libObject = await ctx.env.TYPEDEFS.get(`typescript/v${TYPESCRIPT_VERSION}/${lib}`);
+			if (libObject !== null) {
+				const code = await libObject.text();
+				ctx.env.TYPEDEFS_KV.put(lib, code);
+			}
+		}
+		return ctx.json({
+			message: 'done',
+		});
+	} catch (err: any) {
+		return ctx.json({
+			error: err.message,
+		});
+	}
+});
+
 app.post('/api/test', async (ctx) => {
 	const body = await ctx.req.json < CodeTest > ();
 
@@ -134,22 +154,20 @@ app.post('/api/test', async (ctx) => {
 		});
 	}
 
-	console.log('start loop to read');
-	const requestStartTime = Date.now();
-	for (const lib of standardLibs) {
-		const libObject = await ctx.env.TYPEDEFS.get(`typescript/v${TYPESCRIPT_VERSION}/${lib}`);
-		if (libObject !== null) {
-			standardLibCodeDefs[lib] = await libObject.text();
-		}
-	}
-
-	const executionTime = Date.now() - requestStartTime;
-	console.log('time to get r2 libs', executionTime, 'ms');
-	console.log(`loaded ${Object.keys(standardLibCodeDefs).length} libs`);
-
-	const { code, testCase } = body;
-
 	try {
+		console.log('start loop to read');
+		const requestStartTime = Date.now();
+		for (const libName of standardLibs) {
+			const value = await ctx.env.TYPEDEFS_KV.get(libName);
+			if (value !== null) standardLibCodeDefs[libName] = value;
+		}
+
+		const executionTime = Date.now() - requestStartTime;
+		console.log('time to get libs', executionTime, 'ms');
+		console.log(`loaded ${Object.keys(standardLibCodeDefs).length} libs`);
+
+		const { code, testCase } = body;
+
 		console.log('starting typecheck');
 		const errors = typecheck({ code, testCase });
 		console.log('done with typecheck');
